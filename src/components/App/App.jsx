@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
 import { fetchImagesWithSearchValue } from '../../services/PixabayApi';
@@ -11,105 +11,85 @@ import Modal from '../Modal';
 import { GlobalStyle } from '../GlobalStyle';
 import { AppCss } from './App.styled';
 
-class App extends Component {
-  state = {
-    searchValue: '',
-    images: [],
-    page: 1,
-    isLoading: false,
-    error: null,
-    showModal: false,
-    largeImageURL: null,
-  };
+const App = () => {
+  const [searchValue, setSearchValue] = useState('');
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [largeImageURL, setLargeImageURL] = useState(null);
 
-  componentDidUpdate(prevProps, prevState) {
-    const { searchValue, page } = this.state;
-
-    if (prevState.searchValue !== searchValue || prevState.page !== page) {
-      this.fetchImages();
+  useEffect(() => {
+    if (!searchValue) {
+      return;
     }
-  }
-
-  fetchImages = async () => {
-    const { searchValue, page } = this.state;
-    this.setState(({ isLoading }) => ({
-      isLoading: !isLoading,
-    }));
-    try {
-      const response = await fetchImagesWithSearchValue(searchValue, page);
-      if (response.length <= 0) {
-        toast.error('Not result, please input a new search value!');
+    setIsLoading(true);
+    const getImages = async () => {
+      try {
+        const response = await fetchImagesWithSearchValue(searchValue, page);
+        if (response.length <= 0) {
+          toast.error('Not result, please input a new search value!');
+        }
+        const galleryImg = response.map(({ id, webformatURL, largeImageURL }) => ({
+                id,
+                webformatURL,
+                largeImageURL,
+              }));
+        setImages(prevImg => [...prevImg, ...galleryImg]);
+      } catch (error){
+        setError(error)
+      } finally {
+        setIsLoading(false);
       }
-      const images = response.map(({ id, webformatURL, largeImageURL }) => ({
-        id,
-        webformatURL,
-        largeImageURL,
-      }));
-      this.setState(prevState => ({
-        images: [...prevState.images, ...images],
-      }));
-    } catch (error) {
-      this.setState({ error });
-    } finally {
-      this.setState({ isLoading: false });
     }
+    getImages();
+  }, [page, searchValue]);
+  
+ const handleSubmitForm = searchValue => {
+    setSearchValue(searchValue);
+    resetPage();
+  };
+  const handleLoadMore = () => {
+    setPage(page + 1)
+  };
+  
+  const resetPage = () => {
+    setPage(1);
+    setImages([]);
+  };
+   
+  const handleToggleModal = () => {
+    setShowModal(!showModal);
   };
 
-  handleSubmitForm = searchValue => {
-    this.setState({ searchValue });
-    this.resetPage();
+  const setLargeImgUrl = largeImageURL => {
+    setLargeImageURL(largeImageURL)
+    handleToggleModal();
   };
+  return ( 
+    <AppCss>
+    <GlobalStyle />
+    <Searchbar onSubmit={handleSubmitForm} />
+    <ToastContainer theme="colored" />
+    {error && <h1>{error.message}</h1>}
 
-  handleLoadMore = () => {
-    this.setState(({ page }) => ({
-      page: (page += 1),
-    }));
-  };
+    {images.length > 0 && (
+      <ImageGallery images={images} setLargeImgUrl={setLargeImgUrl} />
+    )}
+    {isLoading && <Loader />}
+    {images.length > 0 && !isLoading && (
+      <Button onLoadMore={handleLoadMore} />
+    )}
 
-  resetPage = () => {
-    this.setState({
-      page: 1,
-      images: [],
-    });
-  };
-
-  setLargeImgUrl = largeImageURL => {
-    this.setState({ largeImageURL });
-    this.handleToggleModal();
-  };
-
-  handleToggleModal = () => {
-    this.setState(({ showModal }) => ({
-      showModal: !showModal,
-    }));
-  };
-
-  render() {
-    const { images, isLoading, error, showModal, largeImageURL } = this.state;
-
-    return (
-      <AppCss>
-        <GlobalStyle />
-        <Searchbar onSubmit={this.handleSubmitForm} />
-        <ToastContainer theme="colored" />
-        {error && <h1>{error.message}</h1>}
-
-        {images.length > 0 && (
-          <ImageGallery images={images} setLargeImgUrl={this.setLargeImgUrl} />
-        )}
-        {isLoading && <Loader />}
-        {images.length > 0 && !isLoading && (
-          <Button onLoadMore={this.handleLoadMore} />
-        )}
-
-        {showModal && (
-          <Modal onClose={this.handleToggleModal}>
-            <img src={largeImageURL} alt="" />
-          </Modal>
-        )}
-      </AppCss>
-    );
-  }
+    {showModal && (
+      <Modal onClose={handleToggleModal}>
+        <img src={largeImageURL} alt="" />
+      </Modal>
+    )}
+  </AppCss>
+   );
 }
-
+ 
 export default App;
+
