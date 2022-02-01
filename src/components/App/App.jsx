@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
 import { fetchImagesWithSearchValue } from '../../services/PixabayApi';
@@ -45,6 +45,12 @@ const App = () => {
     }
     getImages();
   }, [page, searchValue]);
+
+  useLayoutEffect(() => {
+    if(page > 1){
+      handleScrollToNewImages();
+    }
+  }, [page])
   
  const handleSubmitForm = searchValue => {
     setSearchValue(searchValue);
@@ -67,6 +73,14 @@ const App = () => {
     setLargeImageURL(largeImageURL)
     handleToggleModal();
   };
+
+  const handleScrollToNewImages = () => {
+    
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: 'smooth',
+    });
+  }
   return ( 
     <AppCss>
     <GlobalStyle />
